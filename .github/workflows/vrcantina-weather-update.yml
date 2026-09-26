@@ -68,8 +68,9 @@ jobs:
           mkdir -p data
           # Exact query string copied from the live weatherUrl on the scene's
           # WeatherChannelController (2026-09-25). Keep temperature_unit=fahrenheit:
-          # the TV prints the number straight into a "°F" label.
-          URL='https://api.open-meteo.com/v1/forecast?latitude=43.0731&longitude=-89.4012&current=temperature_2m,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min&forecast_days=5&temperature_unit=fahrenheit'
+          # the TV prints the number straight into a "°F" label. timezone=America/Chicago
+          # (added 2026-09-25, owner OK) makes the 5 forecast days Madison days, not UTC days.
+          URL='https://api.open-meteo.com/v1/forecast?latitude=43.0731&longitude=-89.4012&current=temperature_2m,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min&forecast_days=5&temperature_unit=fahrenheit&timezone=America%2FChicago'
 
           curl -sS --fail --retry 3 --retry-delay 10 --max-time 30 "$URL" -o raw.json
 
