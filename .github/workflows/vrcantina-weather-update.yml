@@ -1,0 +1,125 @@
+# VRCantina weather relay (VRCantina issue #14)
+#
+# Copies Madison, WI weather from Open-Meteo into data/vrcantina-weather.json so
+# the VRCantina Weather TV can read it from a *.github.io address. *.github.io is
+# on VRChat's global string-loading allowlist; api.open-meteo.com is not, so a
+# direct call only works for visitors who have turned on "Allow Untrusted URLs".
+#
+# Schedule: the cron fires every hour, and the job itself decides whether to do
+# anything. It only fetches when the hour in America/Chicago is one of
+# 8, 10, 12, 14, 16, 18, 20 (every 2 hours, 8am-9pm Madison time). Using the
+# Chicago clock inside the job means CST/CDT changes need no edits, ever.
+#
+# The JSON keeps Open-Meteo's own shape (current.temperature_2m, current.weather_code,
+# daily.time[] / weather_code[] / temperature_2m_max[] / temperature_2m_min[]) so the
+# Unity parser needs no changes. It adds _relay_updated_at (Unix seconds, UTC) so the
+# TV can tell when the relay has gone stale and show its own plausible reading instead.
+#
+# If Open-Meteo fails, nothing is written or committed: the old file stays up, ages,
+# and the TV's staleness check takes over. No fake data is ever published from here.
+#
+# Weather data: Open-Meteo.com, CC BY 4.0. No key, no secrets: the push uses the
+# default GITHUB_TOKEN. Never add a CNAME to this repo (see README).
+
+name: VRCantina weather relay
+
+on:
+  schedule:
+    - cron: '0 * * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: vrcantina-weather
+  cancel-in-progress: false
+
+jobs:
+  relay:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Gate to Madison hours (America/Chicago 8,10,12,14,16,18,20)
+        id: gate
+        run: |
+          # Without tzdata, `date` silently falls back to UTC. Refuse to guess.
+          ZONE=$(TZ=America/Chicago date +%Z)
+          case "$ZONE" in CST|CDT) ;; *) echo "America/Chicago did not resolve (got '$ZONE')"; exit 1 ;; esac
+          HOUR=$(TZ=America/Chicago date +%-H)
+          echo "Chicago time now: $(TZ=America/Chicago date '+%Y-%m-%d %H:%M %Z') (hour $HOUR)"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "Manual run - skipping the hour gate."
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          case " 8 10 12 14 16 18 20 " in
+            *" $HOUR "*) echo "In the window - fetching."; echo "run=true" >> "$GITHUB_OUTPUT" ;;
+            *)           echo "Outside the window - nothing to do."; echo "run=false" >> "$GITHUB_OUTPUT" ;;
+          esac
+
+      - name: Checkout
+        if: steps.gate.outputs.run == 'true'
+        uses: actions/checkout@v4
+
+      - name: Fetch Open-Meteo and reshape
+        if: steps.gate.outputs.run == 'true'
+        run: |
+          set -euo pipefail
+          mkdir -p data
+          # Exact query string copied from the live weatherUrl on the scene's
+          # WeatherChannelController (2026-09-25). Keep temperature_unit=fahrenheit:
+          # the TV prints the number straight into a "°F" label.
+          URL='https://api.open-meteo.com/v1/forecast?latitude=43.0731&longitude=-89.4012&current=temperature_2m,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min&forecast_days=5&temperature_unit=fahrenheit'
+
+          curl -sS --fail --retry 3 --retry-delay 10 --max-time 30 "$URL" -o raw.json
+
+          # Refuse to publish anything the TV could not use.
+          jq -e '
+            (.current.temperature_2m | type) == "number" and
+            (.current.weather_code   | type) == "number" and
+            (.daily.time               | length) >= 5 and
+            (.daily.weather_code       | length) >= 5 and
+            (.daily.temperature_2m_max | length) >= 5 and
+            (.daily.temperature_2m_min | length) >= 5
+          ' raw.json > /dev/null
+
+          jq '{
+            current: {
+              time:           .current.time,
+              temperature_2m: .current.temperature_2m,
+              weather_code:   .current.weather_code
+            },
+            daily: {
+              time:               .daily.time,
+              weather_code:       .daily.weather_code,
+              temperature_2m_max: .daily.temperature_2m_max,
+              temperature_2m_min: .daily.temperature_2m_min
+            },
+            current_units: .current_units,
+            daily_units:   .daily_units,
+            _relay_updated_at:     (now | floor),
+            _relay_updated_at_utc: (now | floor | todate),
+            _relay_source:         "Open-Meteo.com (CC BY 4.0)"
+          }' raw.json > data/vrcantina-weather.json
+          rm raw.json
+
+          echo "Wrote data/vrcantina-weather.json:"
+          cat data/vrcantina-weather.json
+
+      - name: Commit and push
+        if: steps.gate.outputs.run == 'true'
+        run: |
+          git config --local user.name  "github-actions[bot]"
+          git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/vrcantina-weather.json
+          # _relay_updated_at changes on every run, so every in-window run commits.
+          # That is deliberate: the timestamp is how the TV knows the relay is alive.
+          if git diff --staged --quiet; then
+            echo "No change to commit."
+            exit 0
+          fi
+          T=$(jq -r '.current.temperature_2m' data/vrcantina-weather.json)
+          C=$(jq -r '.current.weather_code'   data/vrcantina-weather.json)
+          git commit -m "vrcantina weather: ${T}F, WMO ${C}"
+          git pull --rebase
+          git push
