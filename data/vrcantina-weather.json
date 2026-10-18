@@ -1,7 +1,7 @@
 {
   "current": {
-    "time": "2026-10-18T14:45",
-    "temperature_2m": 63.3,
+    "time": "2026-10-18T16:45",
+    "temperature_2m": 62.7,
     "weather_code": 0
   },
   "daily": {
@@ -15,21 +15,21 @@
     "weather_code": [
       0,
       3,
-      45,
+      3,
       0,
       3
     ],
     "temperature_2m_max": [
-      63.4,
-      65.1,
+      65.2,
+      66.3,
       65.6,
       67.3,
       69.9
     ],
     "temperature_2m_min": [
       38.3,
-      40.3,
-      41.4,
+      41.0,
+      39.4,
       45.9,
       50.6
     ]
@@ -46,7 +46,7 @@
     "temperature_2m_max": "°F",
     "temperature_2m_min": "°F"
   },
-  "_relay_updated_at": 1792352817,
-  "_relay_updated_at_utc": "2026-10-18T19:46:57Z",
+  "_relay_updated_at": 1792360788,
+  "_relay_updated_at_utc": "2026-10-18T21:59:48Z",
   "_relay_source": "Open-Meteo.com (CC BY 4.0)"
 }
