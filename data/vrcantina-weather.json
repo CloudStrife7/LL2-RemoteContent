@@ -1,37 +1,37 @@
 {
   "current": {
-    "time": "2026-10-28T18:45",
-    "temperature_2m": 67.6,
+    "time": "2026-10-29T12:00",
+    "temperature_2m": 62.1,
     "weather_code": 0
   },
   "daily": {
     "time": [
-      "2026-10-28",
       "2026-10-29",
       "2026-10-30",
       "2026-10-31",
-      "2026-11-01"
+      "2026-11-01",
+      "2026-11-02"
     ],
     "weather_code": [
-      53,
-      53,
+      51,
       3,
-      61,
-      3
+      63,
+      3,
+      61
     ],
     "temperature_2m_max": [
-      74.6,
-      64.3,
-      56.1,
-      53.9,
-      61.2
+      66.3,
+      58.3,
+      53.1,
+      63.2,
+      61.1
     ],
     "temperature_2m_min": [
-      48.0,
-      46.2,
-      39.3,
+      48.5,
+      40.3,
       48.2,
-      49.9
+      50.4,
+      53.9
     ]
   },
   "current_units": {
@@ -46,7 +46,7 @@
     "temperature_2m_max": "°F",
     "temperature_2m_min": "°F"
   },
-  "_relay_updated_at": 1793231185,
-  "_relay_updated_at_utc": "2026-10-28T23:46:25Z",
+  "_relay_updated_at": 1793293744,
+  "_relay_updated_at_utc": "2026-10-29T17:09:04Z",
   "_relay_source": "Open-Meteo.com (CC BY 4.0)"
 }
